@@ -104,57 +104,6 @@ class App extends React.Component {
         this.remove = () => this._removeText();
     }
 
-    _addComment() {
-        const editorState = this.state.editorState;
-        const selectionState = editorState.getSelection();
-
-        if(selectionState.isCollapsed()) {
-            return false;
-        }
-
-        const anchorKey = selectionState.getAnchorKey();
-        const currentContent = editorState.getCurrentContent();
-        const currentContentBlock = currentContent.getBlockForKey(anchorKey);
-        const selectionStart = selectionState.getStartOffset();
-        const selectionEnd = selectionState.getEndOffset();
-        const text = currentContentBlock.getText().slice(selectionStart, selectionEnd);
-        let hasComment = false;
-
-        currentContentBlock.findEntityRanges((character) => {
-            const entityKey = character.getEntity();
-            
-            if(entityKey !== null && currentContent.getEntity(entityKey).getType() === 'COMMENT') {
-                return true;
-            }
-            
-            return false;
-        }, (start, end) => {
-            if(start <= selectionStart && end >= selectionStart) {
-                hasComment |= true;
-            }
-        });
-
-        if(hasComment) {
-            return;
-        }
-        
-        const entityContentState = currentContent.createEntity('COMMENT', 'MUTABLE', { start: selectionStart, end: selectionEnd, text: text, blockKey: anchorKey });
-        const entityEditortState = Draft.EditorState.push(editorState, entityContentState, 'apply-entity');
-        const finallyEditorState = Draft.RichUtils.toggleLink(entityEditortState, selectionState, entityContentState.getLastCreatedEntityKey());
-
-        // const commentContentState = Draft.Modifier.applyInlineStyle(entityContentState, selectionState, 'COMMENT');
-        // const commentEditortState = Draft.EditorState.push(entityEditortState, commentContentState, 'apply-entity');
-
-        // console.log(text);
-        // console.log(selectionState.serialize());
-        // console.log(commentContentState.getLastCreatedEntityKey());
-        // console.log(selectionState.isCollapsed());
-
-        this.onChange(finallyEditorState);
-
-        // this.onChange(commentEditortState);
-    }
-
     findEntitisSelection(editorState) {
         const selectionState = editorState.getSelection();
 
@@ -247,6 +196,46 @@ class App extends React.Component {
         return items;
     }
 
+    _addComment() {
+
+        const entities = this.findEntitisSelection(this.state.editorState);
+        const removes = this.findEntitiesByType(entities, 'REMOVED');
+
+        let editorState = this.state.editorState
+        let selectionState = editorState.getSelection();
+        let currentContent = editorState.getCurrentContent();
+        let finallyEditorState;
+
+        if(selectionState.isCollapsed()) {
+            return false;
+        }
+        
+        if(entities.length === 0 || removes.length) {
+            const entityContentState = currentContent.createEntity('COMMENT', 'MUTABLE', null);
+            const entityEditortState = Draft.EditorState.push(editorState, entityContentState, 'apply-entity');
+            finallyEditorState = Draft.RichUtils.toggleLink(entityEditortState, selectionState, entityContentState.getLastCreatedEntityKey());
+        }
+
+        if(removes.length) {
+            for(let i in removes) {
+                const newSelectionState = Draft.SelectionState.createEmpty(removes[i].block).merge({
+                    anchorOffset: removes[i].range.start,
+                    focusKey: removes[i].block,
+                    focusOffset: removes[i].range.end,
+                    isBackward: true
+                });
+                const editorStateWithSelection = Draft.EditorState.forceSelection(finallyEditorState, newSelectionState);
+                currentContent = editorStateWithSelection.getCurrentContent();
+                selectionState = editorStateWithSelection.getSelection();
+                const entityContentState = currentContent.createEntity('COMMENT_REMOVED', 'MUTABLE', null);
+                const entityEditortState = Draft.EditorState.push(editorStateWithSelection, entityContentState, 'apply-entity');
+                finallyEditorState = Draft.RichUtils.toggleLink(entityEditortState, selectionState, entityContentState.getLastCreatedEntityKey());
+            }
+        }
+
+        this.onChange(finallyEditorState);
+    }
+
     _removeText() {
         
         const entities = this.findEntitisSelection(this.state.editorState);
@@ -256,6 +245,10 @@ class App extends React.Component {
         let selectionState = editorState.getSelection();
         let currentContent = editorState.getCurrentContent();
         let finallyEditorState;
+
+        if(selectionState.isCollapsed()) {
+            return false;
+        }
         
         if(entities.length === 0 || comments.length) {
             const entityContentState = currentContent.createEntity('REMOVED', 'MUTABLE', null);
@@ -278,9 +271,10 @@ class App extends React.Component {
                 const entityEditortState = Draft.EditorState.push(editorStateWithSelection, entityContentState, 'apply-entity');
                 finallyEditorState = Draft.RichUtils.toggleLink(entityEditortState, selectionState, entityContentState.getLastCreatedEntityKey());
 
-                this.onChange(finallyEditorState);
             }
         }
+
+        this.onChange(finallyEditorState);
     }
 
     render() {
