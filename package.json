@@ -1,0 +1,25 @@
+{
+  "name": "rich-editor",
+  "version": "1.0.0",
+  "description": "Rich editor for reactjs powered by draftjs",
+  "main": "main.jsx",
+  "scripts": {
+    "dev": "./node_modules/webpack/bin/webpack.js -d",
+    "build": "./node_modules/webpack/bin/webpack.js",
+    "watch": "./node_modules/webpack/bin/webpack.js -d --watch",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "babel-core": "^6.26.3",
+    "babel-loader": "^7.1.5",
+    "babel-preset-es2015": "^6.24.1",
+    "babel-preset-react": "^6.24.1",
+    "draft-js": "^0.10.5",
+    "react": "^16.4.2",
+    "react-dom": "^16.4.2",
+    "webpack": "^4.16.5",
+    "webpack-cli": "^3.1.0"
+  }
+}
