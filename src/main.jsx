@@ -210,30 +210,32 @@ class App extends React.Component {
             return false;
         }
         
-        if(entities.length === 0 || removes.length) {
+        if(entities.length === 0 /* || removes.length */) {
             const entityContentState = currentContent.createEntity('COMMENT', 'MUTABLE', null);
             const entityEditortState = Draft.EditorState.push(editorState, entityContentState, 'apply-entity');
             finallyEditorState = Draft.RichUtils.toggleLink(entityEditortState, selectionState, entityContentState.getLastCreatedEntityKey());
+
+            this.onChange(finallyEditorState);
         }
 
-        if(removes.length) {
-            for(let i in removes) {
-                const newSelectionState = Draft.SelectionState.createEmpty(removes[i].block).merge({
-                    anchorOffset: removes[i].range.start,
-                    focusKey: removes[i].block,
-                    focusOffset: removes[i].range.end,
-                    isBackward: true
-                });
-                const editorStateWithSelection = Draft.EditorState.forceSelection(finallyEditorState, newSelectionState);
-                currentContent = editorStateWithSelection.getCurrentContent();
-                selectionState = editorStateWithSelection.getSelection();
-                const entityContentState = currentContent.createEntity('COMMENT_REMOVED', 'MUTABLE', null);
-                const entityEditortState = Draft.EditorState.push(editorStateWithSelection, entityContentState, 'apply-entity');
-                finallyEditorState = Draft.RichUtils.toggleLink(entityEditortState, selectionState, entityContentState.getLastCreatedEntityKey());
-            }
-        }
+        // if(removes.length) {
+        //     for(let i in removes) {
+        //         const newSelectionState = Draft.SelectionState.createEmpty(removes[i].block).merge({
+        //             anchorOffset: removes[i].range.start,
+        //             focusKey: removes[i].block,
+        //             focusOffset: removes[i].range.end,
+        //             isBackward: true
+        //         });
+        //         const editorStateWithSelection = Draft.EditorState.forceSelection(finallyEditorState, newSelectionState);
+        //         currentContent = editorStateWithSelection.getCurrentContent();
+        //         selectionState = editorStateWithSelection.getSelection();
+        //         const entityContentState = currentContent.createEntity('COMMENT_REMOVED', 'MUTABLE', null);
+        //         const entityEditortState = Draft.EditorState.push(editorStateWithSelection, entityContentState, 'apply-entity');
+        //         finallyEditorState = Draft.RichUtils.toggleLink(entityEditortState, selectionState, entityContentState.getLastCreatedEntityKey());
+        //     }
+        // }
 
-        this.onChange(finallyEditorState);
+        // this.onChange(finallyEditorState);
     }
 
     _removeText() {
@@ -250,31 +252,33 @@ class App extends React.Component {
             return false;
         }
         
-        if(entities.length === 0 || comments.length) {
+        if(entities.length === 0 /* || comments.length */) {
             const entityContentState = currentContent.createEntity('REMOVED', 'MUTABLE', null);
             const entityEditortState = Draft.EditorState.push(editorState, entityContentState, 'apply-entity');
             finallyEditorState = Draft.RichUtils.toggleLink(entityEditortState, selectionState, entityContentState.getLastCreatedEntityKey());
+
+            this.onChange(finallyEditorState);
         }
 
-        if(comments.length) {
-            for(let i in comments) {
-                const newSelectionState = Draft.SelectionState.createEmpty(comments[i].block).merge({
-                    anchorOffset: comments[i].range.start,
-                    focusKey: comments[i].block,
-                    focusOffset: comments[i].range.end,
-                    isBackward: true
-                });
-                const editorStateWithSelection = Draft.EditorState.forceSelection(finallyEditorState, newSelectionState);
-                currentContent = editorStateWithSelection.getCurrentContent();
-                selectionState = editorStateWithSelection.getSelection();
-                const entityContentState = currentContent.createEntity('COMMENT_REMOVED', 'MUTABLE', null);
-                const entityEditortState = Draft.EditorState.push(editorStateWithSelection, entityContentState, 'apply-entity');
-                finallyEditorState = Draft.RichUtils.toggleLink(entityEditortState, selectionState, entityContentState.getLastCreatedEntityKey());
+        // if(comments.length) {
+        //     for(let i in comments) {
+        //         const newSelectionState = Draft.SelectionState.createEmpty(comments[i].block).merge({
+        //             anchorOffset: comments[i].range.start,
+        //             focusKey: comments[i].block,
+        //             focusOffset: comments[i].range.end,
+        //             isBackward: true
+        //         });
+        //         const editorStateWithSelection = Draft.EditorState.forceSelection(finallyEditorState, newSelectionState);
+        //         currentContent = editorStateWithSelection.getCurrentContent();
+        //         selectionState = editorStateWithSelection.getSelection();
+        //         const entityContentState = currentContent.createEntity('COMMENT_REMOVED', 'MUTABLE', null);
+        //         const entityEditortState = Draft.EditorState.push(editorStateWithSelection, entityContentState, 'apply-entity');
+        //         finallyEditorState = Draft.RichUtils.toggleLink(entityEditortState, selectionState, entityContentState.getLastCreatedEntityKey());
 
-            }
-        }
+        //     }
+        // }
 
-        this.onChange(finallyEditorState);
+        // this.onChange(finallyEditorState);
     }
 
     render() {
