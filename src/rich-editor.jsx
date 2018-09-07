@@ -53,15 +53,53 @@ class RichEditor extends React.Component {
     }
 
     setContentData(content) {
-
+        
     }
 
     getContentData() {
+        const editorState = this.state.editorState;
+        const contentState = editorState.getCurrentContent();
+        const content = contentState.getPlainText();
+        const blocks = contentState.getBlocksAsArray();
+        const highlights = [];
+        const entities = [];
+        const ranges = [];
 
+        for(let i in blocks) {
+            blocks[i].findEntityRanges((character) => {
+                const key = character.getEntity();
+                if(key === null) {
+                    return false;
+                }                
+                const entity = contentState.getEntity(key);
+                entities.push({
+                    entity: entity,
+                    text: blocks[i].getText()
+                });
+
+                return true;
+            }, (start, end) => {
+                ranges.push({start: start, end: end});
+            });
+        }
+
+        for(let index in entities) {
+            const highlight = entities[index].entity.getData().highlight;
+            if(highlight) {
+                highlight.from = ranges[index].start;
+                highlight.to = ranges[index].end;
+                highlight.text = entities[index].text.slice(ranges[index].start, ranges[index].end);
+                highlights.push(highlight);
+            }
+        }
+
+        return highlights;
     }
 
-    applys(from, to, comments) {
-
+    applyComment(from, to, comments) {
+        const selection = this._generalSelectionToLocalSelection(from, to);
+        const editorState = this.state.editorState;
+        this._attachComment(editorState, selection, comments);
     }
 
     setComments(highlight, comment) {
@@ -70,14 +108,9 @@ class RichEditor extends React.Component {
 
     removeContent(from, to) {
         const editorState = this.state.editorState;
-        const currentContent = editorState.getCurrentContent();
         const selectionState = this._generalSelectionToLocalSelection(from, to);
-        console.log(from, to, selectionState.serialize());
         
-        const contentState = Draft.Modifier.removeRange(currentContent, selectionState, 'forward');
-        const finallyEditorState = Draft.EditorState.push(editorState, contentState, 'remove-range');
-
-        this.onChange(finallyEditorState);
+        this._attachRemove(editorState, selectionState);
     }
 
     removeHighlight(highlight) {
@@ -103,7 +136,9 @@ class RichEditor extends React.Component {
             return;
         }
         
-        const entities = this._findEntitiesSelection(this.state.editorState);
+        const editorState = this.state.editorState;
+        const selectionState = editorState.getSelection();
+        const entities = this._findEntitiesInSelection(editorState, selectionState);
         const highlights = this._fetchHighlightsFromEntities(entities);
         
         this.props.onHighlightsClick(highlights);
@@ -113,6 +148,11 @@ class RichEditor extends React.Component {
 
     _findEntitiesSelection(editorState) {
         const selectionState = editorState.getSelection();
+        
+        return this._findEntitiesInSelection(editorState, selectionState);
+    }
+
+    _findEntitiesInSelection(editorState, selectionState) {
         const currentContent = editorState.getCurrentContent();
         const selectionStartKey = selectionState.getStartKey();
         const selectionStartOffset = selectionState.getStartOffset();
@@ -137,7 +177,7 @@ class RichEditor extends React.Component {
                 
                 if(entityKey !== null) {
                     entity = currentContent.getEntity(entityKey);
-                    
+
                     entities.push({
                         entity: entity,
                         block: currentKey
@@ -158,7 +198,7 @@ class RichEditor extends React.Component {
         }
 
         let entityMustDeleted = [];
-
+        
         for(let i in entities) {
             (entities[i]).range = ranges[i]
 
@@ -288,6 +328,7 @@ class RichEditor extends React.Component {
         
         for(let i in entities) {
             data = entities[i].entity.getData();
+            
             if(data.highlight) {
                 highlights.push(data.highlight);
             }
@@ -296,39 +337,42 @@ class RichEditor extends React.Component {
         return highlights;
     }
 
-    _addComment() {
+    _attachComment(editorState, selectionState, comments) {
+        const entities = this._findEntitiesInSelection(editorState, selectionState);
+        const removeEntities = this._findEntitiesByType(entities, 'REMOVED');
 
-        const entities = this._findEntitiesSelection(this.state.editorState);
-        const removes = this._findEntitiesByType(entities, 'REMOVED');
-
-        let editorState = this.state.editorState
-        let selectionState = editorState.getSelection();
         let currentContent = editorState.getCurrentContent();
         let finallyEditorState;
 
         if(selectionState.isCollapsed()) {
             return false;
         }
-        
-        if(entities.length === 0 || removes.length ) {
-            const entityContentState = currentContent.createEntity('COMMENT', 'MUTABLE', null);
+
+        const highlight = {
+            id: null,
+            type: 'comment',
+            comments: comments
+        };
+
+        if(entities.length === 0 || removeEntities.length ) {
+            const entityContentState = currentContent.createEntity('COMMENT', 'MUTABLE', {highlight: highlight});
             const entityEditortState = Draft.EditorState.push(editorState, entityContentState, 'apply-entity');
             finallyEditorState = Draft.RichUtils.toggleLink(entityEditortState, selectionState, entityContentState.getLastCreatedEntityKey());
         }
 
-        if(removes.length) {
-            for(let i in removes) {
-                const newSelectionState = Draft.SelectionState.createEmpty(removes[i].block).merge({
-                    anchorOffset: removes[i].range.start,
-                    focusKey: removes[i].block,
-                    focusOffset: removes[i].range.end,
+        if(removeEntities.length) {
+            for(let i in removeEntities) {
+                const newSelectionState = Draft.SelectionState.createEmpty(removeEntities[i].block).merge({
+                    anchorOffset: removeEntities[i].range.start,
+                    focusKey: removeEntities[i].block,
+                    focusOffset: removeEntities[i].range.end,
                     isBackward: false,
                     hasFocus: true
                 });
-                const editorStateWithSelection = Draft.EditorState.forceSelection(finallyEditorState, newSelectionState);
+                const editorStateWithSelection = Draft.EditorState.acceptSelection(finallyEditorState, newSelectionState);
                 currentContent = editorStateWithSelection.getCurrentContent();
                 selectionState = editorStateWithSelection.getSelection();
-                const entityContentState = currentContent.createEntity('COMMENT_REMOVED', 'MUTABLE', null);
+                const entityContentState = currentContent.createEntity('COMMENT_REMOVED', 'MUTABLE', {highlight: highlight});
                 const entityEditortState = Draft.EditorState.push(editorStateWithSelection, entityContentState, 'apply-entity');
                 finallyEditorState = Draft.RichUtils.toggleLink(entityEditortState, selectionState, entityContentState.getLastCreatedEntityKey());
             }
@@ -337,46 +381,50 @@ class RichEditor extends React.Component {
         this.onChange(finallyEditorState);
     }
 
-    _removeText() {
-        
-        const entities = this._findEntitiesSelection(this.state.editorState);
-        const comments = this._findEntitiesByType(entities, 'COMMENT');
+    _attachRemove(editorState, selectionState) {
+        const entities = this._findEntitiesInSelection(editorState, selectionState);
+        const commentEntities = this._findEntitiesByType(entities, 'COMMENT');
 
-        let editorState = this.state.editorState
-        let selectionState = editorState.getSelection();
         let currentContent = editorState.getCurrentContent();
         let finallyEditorState;
 
         if(selectionState.isCollapsed()) {
             return false;
         }
-        
-        if(entities.length === 0 || comments.length) {
-            const entityContentState = currentContent.createEntity('REMOVED', 'MUTABLE', null);
+
+        const highlight = {
+            id: null,
+            type: 'delete',
+            comments: null
+        };
+
+        if(entities.length === 0 || commentEntities.length) {
+            const entityContentState = currentContent.createEntity('REMOVED', 'MUTABLE', {highlight: highlight});
             const entityEditortState = Draft.EditorState.push(editorState, entityContentState, 'apply-entity');
             finallyEditorState = Draft.RichUtils.toggleLink(entityEditortState, selectionState, entityContentState.getLastCreatedEntityKey());
         }
 
-        if(comments.length) {
-            for(let i in comments) {
-                const newSelectionState = Draft.SelectionState.createEmpty(comments[i].block).merge({
-                    anchorKey: comments[i].block,
-                    anchorOffset: comments[i].range.start,
-                    focusKey: comments[i].block,
-                    focusOffset: comments[i].range.end,
+        if(commentEntities.length) {
+            for(let i in commentEntities) {
+                const newSelectionState = Draft.SelectionState.createEmpty(commentEntities[i].block).merge({
+                    anchorKey: commentEntities[i].block,
+                    anchorOffset: commentEntities[i].range.start,
+                    focusKey: commentEntities[i].block,
+                    focusOffset: commentEntities[i].range.end,
                     isBackward: false,
                     hasFocus: true
                 });
                 const editorStateWithSelection = Draft.EditorState.forceSelection(finallyEditorState, newSelectionState);
                 currentContent = editorStateWithSelection.getCurrentContent();
                 selectionState = editorStateWithSelection.getSelection();
-                const entityContentState = currentContent.createEntity('COMMENT_REMOVED', 'MUTABLE', null);
+                const entityContentState = currentContent.createEntity('COMMENT_REMOVED', 'MUTABLE', commentEntities[i].entity.getData());
                 const entityEditortState = Draft.EditorState.push(editorStateWithSelection, entityContentState, 'apply-entity');
                 finallyEditorState = Draft.RichUtils.toggleLink(entityEditortState, selectionState, entityContentState.getLastCreatedEntityKey());
             }
         }
 
-        this.onChange(finallyEditorState);
+        this.onChange(finallyEditorState);        
+
     }
 
     render() {

@@ -13,11 +13,11 @@ const onHighlightsClick = (highlights) => {
 };
 
 const comment = () => {
-    richEditor._addComment();
+    richEditor.applyComment(5,10, "Majid Ataee");
 };
 
 const remove = () => {
-    richEditor._removeText();
+    richEditor.removeContent(2, 4);
 };
 
 const setEditorMode = () => {
@@ -32,6 +32,10 @@ const setViewerMode = () => {
     richEditor.setMode("viewer");
 };
 
+const exportData = () => {
+    richEditor.getContentData();
+};
+
 ReactDOM.render(
     <div>
         <div className="toolbar">
@@ -43,6 +47,7 @@ ReactDOM.render(
             <div className="group">
                 <button onClick={comment}>Comment</button>
                 <button onClick={remove}>Remove</button>
+                <button onClick={exportData}>export</button>
             </div>
         </div>
         <RichEditor
