@@ -21,11 +21,31 @@
             text-decoration-color: blue;
             color: cornflowerblue
         }
+
+        .toolbar {
+            background: #eee;
+        }
+
+        .toolbar .group {
+            display: inline-block;
+            margin: 0 0.25rem;
+        }
+
+        .toolbar button {
+            border: 1px solid #ddd;
+            background: #fff;
+            margin: 0.5rem 0.25rem;
+            padding: 0.25rem;
+        }
+
+        .toolbar button.active {
+            background: #ddd;
+        }
         
     </style>
 </head>
 <body>
     <div class="content"></div>
-    <script src="./dist/rich-editor.js"></script>
+    <script src="./dist/main.js"></script>
 </body>
 </html>
