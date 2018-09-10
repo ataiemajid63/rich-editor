@@ -126,7 +126,7 @@ class RichEditor extends React.Component {
 
         const entities = this._findEntitiesSelection(this.state.editorState);
         const {from, to} = this._localSelectionToGeneralSelection();
-        const highlights = this._fetchHighlightsFromEntities(entities);
+        const highlights = this._fetchHighlightsFromEntities(this._distinctEntities(entities));
 
         this.props.onTextSelect(from, to, highlights);
     }
@@ -138,8 +138,9 @@ class RichEditor extends React.Component {
         
         const editorState = this.state.editorState;
         const selectionState = editorState.getSelection();
+
         const entities = this._findEntitiesInSelection(editorState, selectionState);
-        const highlights = this._fetchHighlightsFromEntities(entities);
+        const highlights = this._fetchHighlightsFromEntities(this._distinctEntities(entities));
         
         this.props.onHighlightsClick(highlights);
     }
@@ -159,68 +160,50 @@ class RichEditor extends React.Component {
         const selectionEndKey = selectionState.getEndKey();
         const selectionEndOffset = selectionState.getEndOffset();
 
-        let currentContentBlock = null;
+        let block = null;
         let currentKey = selectionStartKey;
         let lastStep = false;
         let entities = [];
-        let ranges = [];
 
         while (!lastStep) {
+            let start = 0;
+            let end = 0;
+
+            block = currentContent.getBlockForKey(currentKey);
+            
+            end = block.getLength();
+            
             if(currentKey === selectionEndKey) {
                 lastStep = true;
+                end = selectionEndOffset;
             }
             
-            currentContentBlock = currentContent.getBlockForKey(currentKey);
-            currentContentBlock.findEntityRanges((character) => {
-                const entityKey = character.getEntity();
+            if(currentKey === selectionStartKey) {
+                start = selectionStartOffset;
+            }
+
+            if(start === end) {
+                end++;
+            }
+            
+            for(let i = start; i < end; i++) {
+                const entityKey = block.getEntityAt(i);
                 let entity = null;
-                
-                if(entityKey !== null) {
+                if(entityKey) {
                     entity = currentContent.getEntity(entityKey);
+                }
 
+                if(entity) {
                     entities.push({
+                        entityKey: entityKey,
                         entity: entity,
-                        block: currentKey
+                        blockKey: currentKey,
+                        offset: i
                     });
-
-                    return true;
-                }
-
-                return false;
-            }, (start, end) => {
-                ranges.push({
-                    start: start,
-                    end: end
-                });
-            });
-            
-            currentKey = currentContent.getKeyAfter(currentKey);
-        }
-
-        let entityMustDeleted = [];
-        
-        for(let i in entities) {
-            (entities[i]).range = ranges[i]
-
-            if(selectionStartKey === selectionEndKey) {
-                if(entities[i].range.start < selectionStartOffset || entities[i].range.end > selectionEndOffset) {
-                    entityMustDeleted.push(i);
-                }
-            } else {
-                if(entities[i].block === selectionStartKey) {
-                    if(entities[i].range.start < selectionStartOffset) {
-                        entityMustDeleted.push(i);
-                    }
-                } else if(entities[i].block === selectionEndKey) {
-                    if(entities[i].range.end > selectionEndOffset) {
-                        entityMustDeleted.push(i);
-                    }
                 }
             }
-        }
 
-        for(let index = entityMustDeleted.length; index > 0; index--) {
-            entities.splice(index - 1, 1);
+            currentKey = currentContent.getKeyAfter(currentKey);
         }
 
         return entities;
@@ -337,6 +320,21 @@ class RichEditor extends React.Component {
         return highlights;
     }
 
+    _distinctEntities(entities) {
+        let uniqueEntities = {};
+        let finallyEntities = [];
+        
+        for(let i in entities) {
+            uniqueEntities[entities[i].entityKey] = entities[i];
+        }
+
+        for(let i in uniqueEntities) {
+            finallyEntities.push(uniqueEntities[i]);
+        }
+
+        return finallyEntities;
+    }
+
     _attachComment(editorState, selectionState, comments) {
         const entities = this._findEntitiesInSelection(editorState, selectionState);
         const removeEntities = this._findEntitiesByType(entities, 'REMOVED');
@@ -433,6 +431,7 @@ class RichEditor extends React.Component {
             <Draft.Editor
                 ref={(editor) => {this.editor = editor;}}
                 editorState={this.state.editorState}
+                on
                 onChange={this.onChange} />
             </div>
         );
