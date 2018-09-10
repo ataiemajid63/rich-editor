@@ -7,23 +7,8 @@ class RichEditor extends React.Component {
     constructor(props) {
         super(props);
 
-        const CompositeDecorator = new Draft.CompositeDecorator([
-            {
-                strategy: CustomDecorator.CommentStrategy,
-                component: CustomDecorator.CommentComponent
-            },
-            {
-                strategy: CustomDecorator.RemovedStrategy,
-                component: CustomDecorator.RemovedComponent
-            },
-            {
-                strategy: CustomDecorator.CommentRemovedStrategy,
-                component: CustomDecorator.CommentRemovedComponent
-            }
-        ]);      
-
         this.state = {
-            editorState: Draft.EditorState.createEmpty(CompositeDecorator),
+            editorState: Draft.EditorState.createEmpty(this._getCompositeDecorator()),
             mode: props.mode || 'commentor',
         };
   
@@ -52,8 +37,25 @@ class RichEditor extends React.Component {
         return this.state.mode;
     }
 
-    setContentData(content) {
+    setContentData(data) {
+        const contentState = Draft.ContentState.createFromText(data.text);
+        let editorState = Draft.EditorState.createWithContent(contentState, this._getCompositeDecorator());
+
+        this.onChange(editorState);
         
+        const main = this;
+
+        window.setTimeout(() => {
+            for(let i in data.highlights) {
+                if(data.highlights[i].type == "comment") {
+                    editorState = main._createComment(editorState, main._generalSelectionToLocalSelection(data.highlights[i].from, data.highlights[i].to), data.highlights[i]);
+                } else if(data.highlights[i].type == "delete") {
+                    editorState = main._createRemove(editorState, main._generalSelectionToLocalSelection(data.highlights[i].from, data.highlights[i].to), data.highlights[i]);
+                }
+            }
+    
+            main.onChange(editorState);
+        }, 100);
     }
 
     getContentData() {
@@ -158,6 +160,25 @@ class RichEditor extends React.Component {
     }
 
     //Private Methods
+
+    _getCompositeDecorator() {
+        const compositeDecorator = new Draft.CompositeDecorator([
+            {
+                strategy: CustomDecorator.CommentStrategy,
+                component: CustomDecorator.CommentComponent
+            },
+            {
+                strategy: CustomDecorator.RemovedStrategy,
+                component: CustomDecorator.RemovedComponent
+            },
+            {
+                strategy: CustomDecorator.CommentRemovedStrategy,
+                component: CustomDecorator.CommentRemovedComponent
+            }
+        ]);
+
+        return compositeDecorator;
+    }
 
     _findEntitites(editorState) {
         const currentContent = editorState.getCurrentContent();
@@ -363,6 +384,46 @@ class RichEditor extends React.Component {
         }
 
         return finallyEntities;
+    }
+
+    _createComment(editorState, selectionState, highlight) {
+        const entities = this._findEntitiesInSelection(editorState, selectionState);
+        const removeEntities = this._findEntitiesByType(entities, 'REMOVED');
+
+        let currentContent = editorState.getCurrentContent();
+        let finallyEditorState;
+
+        if(selectionState.isCollapsed()) {
+            return false;
+        }
+
+        if(entities.length === 0 || removeEntities.length ) {
+            const entityContentState = currentContent.createEntity('COMMENT', 'MUTABLE', {highlight: highlight});
+            const entityEditortState = Draft.EditorState.push(editorState, entityContentState, 'apply-entity');
+            finallyEditorState = Draft.RichUtils.toggleLink(entityEditortState, selectionState, entityContentState.getLastCreatedEntityKey());
+        }
+
+        return finallyEditorState;
+    }
+
+    _createRemove(editorState, selectionState, highlight) {
+        const entities = this._findEntitiesInSelection(editorState, selectionState);
+        const removeEntities = this._findEntitiesByType(entities, 'COMMENT');
+
+        let currentContent = editorState.getCurrentContent();
+        let finallyEditorState;
+
+        if(selectionState.isCollapsed()) {
+            return false;
+        }
+
+        if(entities.length === 0 || removeEntities.length ) {
+            const entityContentState = currentContent.createEntity('REMOVED', 'MUTABLE', {highlight: highlight});
+            const entityEditortState = Draft.EditorState.push(editorState, entityContentState, 'apply-entity');
+            finallyEditorState = Draft.RichUtils.toggleLink(entityEditortState, selectionState, entityContentState.getLastCreatedEntityKey());
+        }
+        
+        return finallyEditorState;
     }
 
     _attachComment(editorState, selectionState, comments) {

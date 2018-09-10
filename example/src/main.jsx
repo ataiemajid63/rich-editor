@@ -3,6 +3,7 @@ import ReactDOM from 'react-dom';
 import RichEditor from '../../src/rich-editor.jsx';
 
 let richEditor = null;
+let data = null;
 
 const onTextSelect = (from, to, highlights) => {
     console.log(from, to, highlights);
@@ -33,7 +34,13 @@ const setViewerMode = () => {
 };
 
 const exportData = () => {
-    console.log(richEditor.getContentData());
+    data = richEditor.getContentData();
+    console.log(data);
+    
+};
+
+const importData = () => {
+    richEditor.setContentData(data);
 };
 
 ReactDOM.render(
@@ -48,6 +55,7 @@ ReactDOM.render(
                 <button onClick={comment}>Comment</button>
                 <button onClick={remove}>Remove</button>
                 <button onClick={exportData}>export</button>
+                <button onClick={importData}>import</button>
             </div>
         </div>
         <RichEditor
