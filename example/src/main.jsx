@@ -33,7 +33,7 @@ const setViewerMode = () => {
 };
 
 const exportData = () => {
-    richEditor.getContentData();
+    console.log(richEditor.getContentData());
 };
 
 ReactDOM.render(

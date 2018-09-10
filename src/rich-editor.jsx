@@ -61,39 +61,51 @@ class RichEditor extends React.Component {
         const contentState = editorState.getCurrentContent();
         const content = contentState.getPlainText();
         const blocks = contentState.getBlocksAsArray();
-        const highlights = [];
-        const entities = [];
+        let finallyHighlights = [];
+        let entities = [];
+        let groups = {};
         const ranges = [];
 
-        for(let i in blocks) {
-            blocks[i].findEntityRanges((character) => {
-                const key = character.getEntity();
-                if(key === null) {
-                    return false;
-                }                
-                const entity = contentState.getEntity(key);
-                entities.push({
-                    entity: entity,
-                    text: blocks[i].getText()
-                });
+        entities = this._findEntitites(editorState);
+        
+        let entityKey = 0;
+        for(let i in entities) {
+            entityKey = entities[i].entityKey;
 
-                return true;
-            }, (start, end) => {
-                ranges.push({start: start, end: end});
-            });
+            if(groups[entityKey]) {
+                groups[entityKey].push(entities[i]);
+            } else {
+                groups[entityKey] = [];
+                groups[entityKey].push(entities[i]);
+            }
         }
+        
+        for(let i in groups) {
+            const selection = Draft.SelectionState.createEmpty(groups[i][0].blockKey).merge({
+                anchorKey: groups[i][0].blockKey,
+                anchorOffset: groups[i][0].offset,
+                focusKey: groups[i][groups[i].length - 1].blockKey,
+                focusOffset: groups[i][groups[i].length - 1].offset + 1,
+                isBackward: false,
+                hasFocus: true
+            });
 
-        for(let index in entities) {
-            const highlight = entities[index].entity.getData().highlight;
-            if(highlight) {
-                highlight.from = ranges[index].start;
-                highlight.to = ranges[index].end;
-                highlight.text = entities[index].text.slice(ranges[index].start, ranges[index].end);
-                highlights.push(highlight);
+            const range = this._localSelectionToGeneralSelection(selection);
+            const highlights = this._fetchHighlightsFromEntities(this._distinctEntities(groups[i]));
+
+            for(let n in highlights) {
+                let highlight = highlights[n];
+                highlight.from = range.from;
+                highlight.to = range.to;
+                highlight.text = content.slice(range.from, range.to);
+                finallyHighlights.push(highlight);
             }
         }
 
-        return highlights;
+        return {
+            text: content,
+            highlights: finallyHighlights
+        };
     }
 
     applyComment(from, to, comments) {
@@ -147,6 +159,24 @@ class RichEditor extends React.Component {
 
     //Private Methods
 
+    _findEntitites(editorState) {
+        const currentContent = editorState.getCurrentContent();
+        const selectionStartKey = currentContent.getFirstBlock().getKey();
+        const selectionStartOffset = 0;
+        const selectionEndKey = currentContent.getLastBlock().getKey();
+        const selectionEndOffset = currentContent.getLastBlock().getLength();
+        const selection = Draft.SelectionState.createEmpty(selectionStartKey).merge({
+            anchorKey: selectionStartKey,
+            anchorOffset: selectionStartOffset,
+            focusKey: selectionEndKey,
+            focusOffset: selectionEndOffset,
+            isBackward: false,
+            hasFocus: true
+        });
+
+        return this._findEntitiesInSelection(editorState, selection);
+    }
+
     _findEntitiesSelection(editorState) {
         const selectionState = editorState.getSelection();
         
@@ -159,7 +189,7 @@ class RichEditor extends React.Component {
         const selectionStartOffset = selectionState.getStartOffset();
         const selectionEndKey = selectionState.getEndKey();
         const selectionEndOffset = selectionState.getEndOffset();
-
+        
         let block = null;
         let currentKey = selectionStartKey;
         let lastStep = false;
@@ -221,9 +251,9 @@ class RichEditor extends React.Component {
         return items;
     }
 
-    _localSelectionToGeneralSelection() {
+    _localSelectionToGeneralSelection(selection) {
         const editorState = this.state.editorState;
-        const selectionState = editorState.getSelection();
+        const selectionState = selection || editorState.getSelection();
         const currentContent = editorState.getCurrentContent();
         const selectionStartKey = selectionState.getStartKey();
         const selectionStartOffset = selectionState.getStartOffset();
