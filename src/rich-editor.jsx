@@ -319,30 +319,32 @@ class RichEditor extends React.Component {
         let start = 0;
         let end = 0;
 
-        for(let i in blocks) {
+        for(let i = 0; i < blocks.length; i++) {
             start += blocks[i].getLength();
 
             if(start >= from) {
-                selectionStartOffset = (start - blocks[i].getLength()) + from;
+                start -= blocks[i].getLength();
+                selectionStartOffset = from - start;
                 selectionStartKey = blocks[i].getKey();
                 break;
             }
         }
-
-        for(let i in blocks) {
+        
+        for(let i = 0; i < blocks.length; i++) {
             end += blocks[i].getLength();
             
             if(end >= to) {
-                selectionEndOffset = (end - blocks[i].getLength()) + to;
+                end -= blocks[i].getLength();
+                selectionEndOffset = to - end;
                 selectionEndKey = blocks[i].getKey();
                 break;
             }
         }
-
-        if(start + end === 0) {
+        
+        if(selectionStartOffset + selectionEndOffset === 0) {
             return null;
         }
-
+        
         selectionState = Draft.SelectionState.createEmpty(selectionStartKey);
         const updatedSelectionState = selectionState.merge({
             anchorKey: selectionStartKey,
@@ -352,7 +354,7 @@ class RichEditor extends React.Component {
             isBackward: false,
             hasFocus: true
         });
-
+        
         return updatedSelectionState;
     }
 

@@ -4,8 +4,15 @@ import RichEditor from '../../src/rich-editor.jsx';
 
 let richEditor = null;
 let data = null;
+let selection = null;
 
 const onTextSelect = (from, to, highlights) => {
+    selection = {
+        from: from,
+        to: to,
+        highlights: highlights
+    };
+
     console.log(from, to, highlights);
 };
 
@@ -14,11 +21,17 @@ const onHighlightsClick = (highlights) => {
 };
 
 const comment = () => {
-    richEditor.applyComment(5,10, "Majid Ataee");
+    if(selection) {
+        richEditor.applyComment(selection.from, selection.to, "Majid Ataee");
+        selection = null;
+    }
 };
 
 const remove = () => {
-    richEditor.removeContent(2, 4);
+    if(selection) {
+        richEditor.removeContent(selection.from, selection.to);
+        selection = null;
+    }
 };
 
 const setEditorMode = () => {
