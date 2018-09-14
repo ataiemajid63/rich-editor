@@ -5,6 +5,7 @@ import RichEditor from '../../src/rich-editor.jsx';
 let richEditor = null;
 let data = null;
 let selection = null;
+let clickedHighlights = null;
 
 const onTextSelect = (from, to, highlights) => {
     selection = {
@@ -12,12 +13,12 @@ const onTextSelect = (from, to, highlights) => {
         to: to,
         highlights: highlights
     };
-
-    console.log(from, to, highlights);
 };
 
 const onHighlightsClick = (highlights) => {
+    clickedHighlights = highlights;
     console.log(highlights);
+    
 };
 
 const comment = () => {
@@ -56,6 +57,24 @@ const importData = () => {
     richEditor.setContentData(data);
 };
 
+const removeHighlight = () => {
+    if(clickedHighlights && clickedHighlights.length) {
+        for(let i in clickedHighlights) {
+            richEditor.removeHighlight(clickedHighlights[i]);
+        }
+        clickedHighlights = null;
+    }
+};
+
+const setComments = () => {
+    if(clickedHighlights && clickedHighlights.length) {
+        for(let i in clickedHighlights) {
+            richEditor.setComments(clickedHighlights[i], {name: "Majid", family: "Ataee"});
+        }
+        clickedHighlights = null;
+    }
+};
+
 ReactDOM.render(
     <div>
         <div className="toolbar">
@@ -67,6 +86,8 @@ ReactDOM.render(
             <div className="group">
                 <button onClick={comment}>Comment</button>
                 <button onClick={remove}>Remove</button>
+                <button onClick={removeHighlight}>Remove Highlight</button>
+                <button onClick={setComments}>Comment Highlight</button>
                 <button onClick={exportData}>export</button>
                 <button onClick={importData}>import</button>
             </div>
