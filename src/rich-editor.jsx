@@ -48,9 +48,9 @@ class RichEditor extends React.Component {
 
         window.setTimeout(() => {
             for(let i in data.highlights) {
-                if(data.highlights[i].type == "comment") {
+                if(data.highlights[i].type == 3) {
                     editorState = main._createComment(editorState, main._generalSelectionToLocalSelection(data.highlights[i].from, data.highlights[i].to), data.highlights[i]);
-                } else if(data.highlights[i].type == "delete") {
+                } else if(data.highlights[i].type == 2) {
                     editorState = main._createRemove(editorState, main._generalSelectionToLocalSelection(data.highlights[i].from, data.highlights[i].to), data.highlights[i]);
                 }
             }
@@ -517,7 +517,7 @@ class RichEditor extends React.Component {
 
         const highlight = {
             id: Date.now(),
-            type: 'comment',
+            type: 3,
             comments: comments
         };
 
@@ -569,7 +569,7 @@ class RichEditor extends React.Component {
 
         const highlight = {
             id: Date.now(),
-            type: 'delete',
+            type: 2,
             comments: null
         };
 
