@@ -1,6 +1,6 @@
 {
   "name": "rich-editor-suggestion",
-  "version": "1.1.0",
+  "version": "1.2.0",
   "description": "Rich editor for reactjs powered by draftjs",
   "main": "src/rich-editor.jsx",
   "keywords": [
